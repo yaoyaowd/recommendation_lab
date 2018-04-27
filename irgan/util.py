@@ -1,7 +1,7 @@
 import numpy as np
 import multiprocessing
 
-WORK_DIR = '/Users/dwang/irgan/item_recommendation/ml-100k/'
+WORK_DIR = '/home/dong/irgan/item_recommendation/ml-100k/'
 
 
 def dcg_at_k(r, k):
@@ -16,28 +16,33 @@ def ndcg_at_k(r, k):
     return dcg_at_k(r, k) / dcg_max
 
 
-def load_data(filename):
+def load_data(filename, umax, imax):
     ret = {}
     with open(WORK_DIR + filename) as input:
         for line in input:
             line = line.split()
             uid, iid, r = int(line[0]), int(line[1]), float(line[2])
+            if uid >= umax or iid >= imax:
+                continue
             if r > 3.99:
                 if uid not in ret:
                     ret[uid] = []
                 ret[uid].append(iid)
+    print filename, 'data size:', len(ret)
     return ret
 
 
-USER_NUM = 943
-ITEM_NUM = 1683
-EMB_DIM = 5
+USER_NUM = 1000
+ITEM_NUM = 9929
+# USER_NUM = 1000
+# ITEM_NUM = 9929
+EMB_DIM = 32
 BATCH_SIZE = 16
 NUM_CORES = multiprocessing.cpu_count()
 DIS_TRAIN_FILE = WORK_DIR + "dis-train.txt"
 
-user_pos_train = load_data('movielens-100k-train.txt')
-user_pos_test = load_data('movielens-100k-test.txt')
+user_pos_train = load_data('wish-train.tsv', USER_NUM, ITEM_NUM)
+user_pos_test = load_data('wish-test.tsv', USER_NUM, ITEM_NUM)
 all_users = user_pos_train.keys()
 all_users.sort()
 ALL_ITEMS = set(range(ITEM_NUM))
