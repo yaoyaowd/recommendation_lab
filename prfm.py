@@ -1,7 +1,8 @@
 import tensorflow as tf
 import random
-
+from tqdm import trange, tqdm
 from irgan.util import *
+from multiprocessing.dummy import Pool as ThreadPool
 
 class PRFM():
     def __init__(self, item_num, user_num, emb_dim, alpha=0.5, initdelta=0.05, learning_rate=0.01):
@@ -57,7 +58,7 @@ class PRFM():
 
 def generate_dns(sess, model):
     data = []
-    for u in user_pos_train:
+    for u in tqdm(user_pos_train, desc="generate_dns"):
         pos = user_pos_train[u]
         all_rating = sess.run(model.dns_rating, {model.u: u})
         all_rating = np.array(all_rating)
@@ -71,6 +72,35 @@ def generate_dns(sess, model):
             data.append((u, pos[i], neg[i]))
     return data
 
+def generate_dns2(sess, model):
+
+    train_samples = []
+
+    def gen_train_samples(uidx_ratings_tup):
+        uidx, ratings = uidx_ratings_tup
+        all_neg_candidates = list(ALL_ITEMS - set(user_pos_train[uidx]))
+
+        for purchased_idx in user_pos_train[uidx]:
+            neg_cands = random.sample(all_neg_candidates, 5)
+            train_samples.append((uidx, purchased_idx, neg_cands[np.argmax(
+                ratings[neg_cands])]))
+
+    pool = ThreadPool(16)
+    train_uidxs = user_pos_train.keys()
+    batch_size = 512
+    for start in trange(
+            0, USER_NUM, batch_size, desc="Generating train candidates"):
+        u_batch = train_uidxs[start:start + batch_size]
+        ratings = sess.run(model.all_rating, {model.u: u_batch})
+        pool.map(gen_train_samples, zip(u_batch, ratings))
+
+    # lines = 0
+    # with open(filename, 'w') as f:
+    #     for t in tqdm(train_samples, desc="Writing train file"):
+    #         f.write('\t'.join(str(x) for x in t) + "\n")
+    #         lines += 1
+    return train_samples
+
 
 def main():
     prfm = PRFM(ITEM_NUM, USER_NUM, EMB_DIM, initdelta=0.05, learning_rate=0.05)
@@ -78,10 +108,10 @@ def main():
         sess.run(tf.global_variables_initializer())
         best_p5 = 0.
 
-        for epoch in range(100):
-            data = generate_dns(sess, prfm)
+        for epoch in trange(100, desc="Epoch"):
+            data = generate_dns2(sess, prfm)
             loss = 0
-            for v in data:
+            for v in tqdm(data, desc="Training"):
                 u, i, j = v[0], v[1], v[2]
                 mf_loss, _ = sess.run(
                     [prfm.mf_loss, prfm.d_updates],
@@ -89,7 +119,7 @@ def main():
                 loss += mf_loss
 
             print "epoch {0}, len {1} loss: {2}".format(epoch, len(data), loss)
-            for i in range(5):
+            for i in trange(5):
                 u = random.randrange(USER_NUM)
                 pos = user_pos_train[u]
                 p = pos[random.randrange(len(pos))]
