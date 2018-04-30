@@ -32,10 +32,10 @@ def load_data(filename, umax, imax):
     return ret
 
 
+# USER_NUM = 100
+# ITEM_NUM = 992
 USER_NUM = 1000
 ITEM_NUM = 9929
-# USER_NUM = 1000
-# ITEM_NUM = 9929
 EMB_DIM = 32
 BATCH_SIZE = 16
 NUM_CORES = multiprocessing.cpu_count()

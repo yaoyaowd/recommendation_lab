@@ -1,7 +1,17 @@
+# train:  53 dis:  [0.62166666666666637, 0.58760000000000012, 0.55269999999999975, 0.62893321502716015, 0.60350459487159391, 0.57385066493517545]
+# test  53 dis:  [0.26833333333333381, 0.25699999999999923, 0.24669999999999925, 0.27345814789721612, 0.26413650273981193, 0.25474495548878373]
+# train:  54 dis:  [0.61399999999999944, 0.59020000000000095, 0.54710000000000003, 0.62452537884909198, 0.60514636023459412, 0.57019252450323066]
+# test  54 dis:  [0.26833333333333392, 0.25739999999999941, 0.25069999999999926, 0.26991050739051048, 0.26204302464307444, 0.25591393965618625]
+# train:  59 dis:  [0.62166666666666637, 0.59620000000000017, 0.55679999999999996, 0.6293299203764221, 0.6094628492467058, 0.5773215041497376]
+# test  59 dis:  [0.27866666666666756, 0.25999999999999895, 0.2482999999999991, 0.27998886917119337, 0.26677201057518596, 0.25631087709205064]
+# train:  64 dis:  [0.61800000000000055, 0.59560000000000057, 0.55539999999999989, 0.6314416746435243, 0.61226165987549097, 0.57840719141574215]
+# test  64 dis:  [0.28133333333333371, 0.26219999999999916, 0.25219999999999915, 0.28150845961636384, 0.2682638742019855, 0.25951038362983886]
+
 import tensorflow as tf
 import random
-from tqdm import trange, tqdm
+
 from irgan.util import *
+from tqdm import trange, tqdm
 from multiprocessing.dummy import Pool as ThreadPool
 
 class PRFM():
@@ -28,26 +38,10 @@ class PRFM():
         self.p_embed = tf.nn.embedding_lookup(self.item_embeddings, self.positive)
         self.n_embed = tf.nn.embedding_lookup(self.item_embeddings, self.negative)
 
-        self.positive_mf = tf.sigmoid(tf.reduce_sum(tf.multiply(self.u_embed, self.p_embed),1))
-        self.negative_mf = tf.sigmoid(tf.reduce_sum(tf.multiply(self.u_embed, self.n_embed),1))
-        self.mf_loss = self.negative_mf - self.positive_mf
-
-        # self.x_positive = tf.concat([self.u_embed, self.p_embed], 1)
-        # self.x_negative = tf.concat([self.u_embed, self.n_embed], 1)
-        # with tf.variable_scope("fm"):
-        #     self.bias = tf.get_variable("w0", shape=(1), dtype=tf.float32)
-        #     self.w = tf.get_variable("w", shape=(self.emb_dim*2, 1), dtype=tf.float32)
-        #     self.fm = tf.get_variable("fm", shape=(self.emb_dim, self.emb_dim), dtype=tf.float32)
-        #
-        # self.positive_fm = self.bias + tf.reduce_sum(tf.multiply(self.x_positive, self.w), 1)\
-        #                    + tf.reduce_sum(tf.multiply(tf.matmul(self.x_positive, tf.transpose(self.x_positive)), self.fm))
-        # self.negative_fm = self.bias + tf.reduce_sum(tf.multiply(self.x_negative, self.w), 1)\
-        #                    + tf.reduce_sum(tf.multiply(tf.matmul(self.x_negative, tf.transpose(self.x_negative)), self.fm))
-        # self.fm_loss = self.negative_fm - self.positive_fm
-
-        self.loss = self.mf_loss
-        # + self.fm_loss * (1 - alpha)
-        # + tf.nn.l2_loss(self.bias) + tf.nn.l2_loss(self.w) + tf.nn.l2_loss(self.fm)
+        self.positive_mf = tf.reduce_sum(tf.multiply(self.u_embed, self.p_embed),1)
+        self.negative_mf = tf.reduce_sum(tf.multiply(self.u_embed, self.n_embed),1)
+        self.logits = tf.sigmoid(self.positive_mf - self.negative_mf)
+        self.loss = -self.logits
 
         self.d_opt = tf.train.GradientDescentOptimizer(self.learning_rate)
         self.d_updates = self.d_opt.minimize(self.loss)
@@ -94,11 +88,6 @@ def generate_dns2(sess, model):
         ratings = sess.run(model.all_rating, {model.u: u_batch})
         pool.map(gen_train_samples, zip(u_batch, ratings))
 
-    # lines = 0
-    # with open(filename, 'w') as f:
-    #     for t in tqdm(train_samples, desc="Writing train file"):
-    #         f.write('\t'.join(str(x) for x in t) + "\n")
-    #         lines += 1
     return train_samples
 
 
@@ -114,7 +103,7 @@ def main():
             for v in tqdm(data, desc="Training"):
                 u, i, j = v[0], v[1], v[2]
                 mf_loss, _ = sess.run(
-                    [prfm.mf_loss, prfm.d_updates],
+                    [prfm.loss, prfm.d_updates],
                     feed_dict={prfm.u: [u], prfm.positive: [i], prfm.negative: [j]})
                 loss += mf_loss
 
