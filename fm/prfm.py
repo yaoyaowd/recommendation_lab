@@ -85,7 +85,7 @@ def simple_test_fm(sess, model):
 
 def generate_dns(sess, model):
     data = []
-    for u in tqdm(user_pos_train, desc="generate_dns"):
+    for u in user_pos_train:#tqdm(user_pos_train, desc="generate_dns"):
         pos = user_pos_train[u]
         all_rating = sess.run(model.dns_rating, {model.u: u})
         all_rating = np.array(all_rating)

@@ -52,7 +52,7 @@ class PRFM():
 
 def generate_dns(sess, model):
     data = []
-    for u in tqdm(user_pos_train, desc="generate_dns"):
+    for u in user_pos_train: # (user_pos_train, desc="generate_dns"):
         pos = user_pos_train[u]
         all_rating = sess.run(model.dns_rating, {model.u: u})
         all_rating = np.array(all_rating)
@@ -97,10 +97,10 @@ def main():
         sess.run(tf.global_variables_initializer())
         best_p5 = 0.
 
-        for epoch in trange(100, desc="Epoch"):
+        for epoch in range(100): # trange(100, desc="Epoch"):
             data = generate_dns2(sess, prfm)
             loss = 0
-            for v in tqdm(data, desc="Training"):
+            for v in data: # tqdm(data, desc="Training"):
                 u, i, j = v[0], v[1], v[2]
                 mf_loss, _ = sess.run(
                     [prfm.loss, prfm.d_updates],

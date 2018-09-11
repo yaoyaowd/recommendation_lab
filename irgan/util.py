@@ -36,7 +36,7 @@ def load_data(filename, umax, imax):
 # ITEM_NUM = 992
 USER_NUM = 1000
 ITEM_NUM = 9929
-EMB_DIM = 32
+EMB_DIM = 50
 BATCH_SIZE = 16
 NUM_CORES = multiprocessing.cpu_count()
 DIS_TRAIN_FILE = WORK_DIR + "dis-train.txt"
